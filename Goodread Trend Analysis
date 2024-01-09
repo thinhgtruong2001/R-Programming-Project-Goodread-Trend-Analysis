@@ -1,0 +1,86 @@
+library(readxl) #excel
+#assign excel dataset to book variable
+book <- read_excel("/Users/it/Library/Mobile Documents/com~apple~CloudDocs/Academic/R Prog/books_1.Best_Books_Ever.xlsx")
+
+#inspect data type of the dataset 
+str(book)
+
+#Calculate duplicate values
+sum(duplicated(book))
+
+#Dataset statistic
+summary(book)
+
+#Drop duplicate in the dataset
+book_nodup <- unique(book)
+
+#Transform column to datetime object
+book_nodup$publishDate <- as.Date(book_nodup$publishDate, format = "%Y-%m-%d")
+book_nodup$firstPublishDate <- as.Date(book_nodup$firstPublishDate, format = "%Y-%m-%d")
+
+#histogram of rating distribution
+library(ggplot2)
+ggplot(book_nodup, aes(x = rating)) +
+  geom_histogram(binwidth = 0.1, fill = "skyblue", color = "black") +
+  labs(title = "Distribution of Book Ratings", x = "Rating", y = "Frequency")
+
+
+#Top 5 languages 
+top_languages <- head(names(sort(table(book_nodup$language), decreasing = TRUE)), 5)
+top_5_languages_data <- book_nodup[book_nodup$language %in% top_languages, ]
+ggplot(top_5_languages_data, aes(x = language)) +
+  geom_bar() +
+  labs(title = "Number of Books Written in Top 5 Languages", x = "Language", y = "Number of Books")
+
+library(tidyverse)
+library(tidytext)
+
+# Top 5 genres has highest rating
+exploded_data <- book_nodup %>%
+  unnest_tokens(genre, genres, token = "regex", pattern = ", ") %>%
+  filter(!is.na(genre))
+average_ratings <- exploded_data %>%
+  group_by(genre) %>%
+  summarise(average_rating = mean(rating, na.rm = TRUE))
+top_5_genres_rating <- average_ratings %>%
+  top_n(5, wt = average_rating)
+ggplot(top_5_genres, aes(x = reorder(genre, -average_rating), y = average_rating)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "Top 5 Genres with Highest Average Ratings", x = "Genre", y = "Average Rating")
+
+
+# relationship between price and rating
+ggplot(book_nodup, aes(x = price, y = rating)) +
+  geom_point(color = "blue") +                
+  geom_smooth(method = "lm", se = FALSE, color = "red") + 
+  labs(title = "Scatter Plot: Price vs Rating", x = "Price", y = "Rating")
+
+# relationship between price and likedPercent
+ggplot(book_nodup, aes(x = price, y = likedPercent)) +
+  geom_point(color = "blue") +                
+  geom_smooth(method = "lm", se = FALSE, color = "red") +  
+  labs(title = "Scatter Plot: Price vs likedPercent", x = "Price", y = "likedPercent")
+
+# relationship between price and pages
+ggplot(book_nodup, aes(x = price, y = pages)) +
+  geom_point(color = "blue") +              
+  geom_smooth(method = "lm", se = FALSE, color = "red") +  
+  labs(title = "Scatter Plot: Price vs Pages", x = "Price", y = "Pages")
+
+# average price over years
+book_nodup$publishYear <- lubridate::year(book_nodup$publishDate)
+average_prices <- book_nodup %>%
+  group_by(publishYear) %>%
+  summarise(average_price = mean(price, na.rm = TRUE))
+ggplot(average_prices, aes(x = publishYear, y = average_price)) +
+  geom_line(color = "blue") +
+  labs(title = "Average Price of Books Over Years", x = "Year", y = "Average Price")
+
+# average rating over years
+average_rating <- book_nodup %>%
+  group_by(publishYear) %>%
+  summarise(average_rating = mean(rating, na.rm = TRUE))
+ggplot(average_rating, aes(x = publishYear, y = average_rating)) +
+  geom_line(color = "blue") +
+  labs(title = "Average Rating of Books Over Years", x = "Year", y = "Average rating")
